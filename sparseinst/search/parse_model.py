@@ -4,6 +4,8 @@ import sys
 from copy import deepcopy
 import yaml
 
+from sparseinst.search.common import Sequential
+
 sys.path.append('./')  # to run '$ python *.py' files in subdirectories
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))  # to run '$ python *.py' files in subdirectories
@@ -25,7 +27,6 @@ except ImportError:
 def parse_model(d, ch=3):  # model_dict, input_channels(3)
     # logger.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
     # anchors, nc = d['anchors'], d['nc']
-    nc = 80
     gd, gw = 1 #d['depth_multiple'], d['width_multiple']
     # na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
     # no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
@@ -105,8 +106,13 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
         t = str(m)[8:-2].replace('__main__.', '')  # module type
         np = sum([x.numel() for x in m_.parameters()])  # number params
         m_.i, m_.f, m_.type, m_.np = i, f, t, np  # attach index, 'from' index, type, number params
+        if 'id' in args_dict:
+            m_.id = args_dict['id']
+        else:
+            m_.id = None
+
         logger.info('%3s%18s%3s%10.0f  %-40s%-30s%-30s' % (i, f, n, np, t, args, args_dict))  # print
-        save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
+        # save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:
             ch = []
@@ -117,8 +123,7 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
         elif m in [Cells_search, Cells_search_merge]:
           ch.append(c2*args[1])
         else: ch.append(c2)
-    model = nn.Sequential(*layers)
-    model.save = sorted(save)
+    model = Sequential(*layers) # this is not nn.Sequential
     model.arch_parameters = arch_parameters
     model.op_arch_parameters = op_arch_parameters
     model.ch_arch_parameters = ch_arch_parameters

@@ -1076,3 +1076,15 @@ class Classify(nn.Module):
     def forward(self, x):
         z = torch.cat([self.aap(y) for y in (x if isinstance(x, list) else [x])], 1)  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
+
+
+class Sequential(nn.Module):
+    def __init__(self, *layers):
+        self.layers = layers
+    def forward(self, input):
+        output = {}
+        for module in self.layers:
+            input = module(input)
+            if module.id:
+                output[module.id] = input
+        return output
