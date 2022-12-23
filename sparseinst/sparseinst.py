@@ -8,7 +8,7 @@ from detectron2.modeling import build_backbone
 from detectron2.structures import ImageList, Instances, BitMasks
 from detectron2.modeling import META_ARCH_REGISTRY, build_backbone
 
-from .encoder import build_sparse_inst_encoder
+from .encoder_search import build_sparse_inst_encoder
 from .decoder import build_sparse_inst_decoder
 from .loss import build_sparse_inst_criterion
 from .utils import nested_tensor_from_tensor_list

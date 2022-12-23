@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 #from mish_cuda import MishCuda as Mish
 
-from models.operations_merge import *
+from ..models.operations_merge import *
 
 
 class MixedOp(nn.Module):
@@ -22,7 +22,7 @@ class MixedOp(nn.Module):
     results = 0
     for idx, op in enumerate(self._ops):
        if 'merge' not in PRIMITIVES_merge[idx]:
-           results += weights[idx]*op(x) 
+           results += weights[idx]*op(x)
        else:
            results += op(x, weights[idx:])
     return results
@@ -41,7 +41,7 @@ class Search_cell_merge(nn.Module):
             self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
           else:
             self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
-        else: 
+        else:
           self.preprocess0 = nn.Identity()
           self.num_input = 1
         self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
@@ -79,5 +79,3 @@ class Search_cell_merge(nn.Module):
           offset += len(states)
           states.append(s)
         return self.final_act(torch.cat(states[-self._multiplier:], dim=1))
-
-

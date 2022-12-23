@@ -14,6 +14,6 @@ from sparseinst.search.parse_model import parse_model
 @BACKBONE_REGISTRY.register()
 def build_search_backbone(cfg, input_shape):
 
-    backbone_cfg = cfg.MODEL.BACKBONE.ARGUMENTS
+    backbone_cfg = cfg.MODEL.SEARCH.BACKBONE_ARGS
 
     return parse_model(backbone_cfg)

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 #from mish_cuda import MishCuda as Mish
 
-from models.operations import *
+from ..models.operations import *
 
 
 class MixedOp(nn.Module):

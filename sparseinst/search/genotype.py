@@ -1,7 +1,7 @@
 
 import torch
 import yaml
-from models import darts_cell
+from .models import darts_cell
 from copy import deepcopy
 
 def genotype(model, cfg):

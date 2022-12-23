@@ -153,6 +153,8 @@ def setup(args):
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
+
+    print("config:", cfg.MODEL.BACKBONE)
     default_setup(cfg, args)
     # Setup logger for "sparseinst" module
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="sparseinst")

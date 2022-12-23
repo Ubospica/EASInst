@@ -6,7 +6,7 @@ import yaml
 from scipy.cluster.vq import kmeans
 from tqdm import tqdm
 
-from utils.general import colorstr
+from ..utils.general import colorstr
 
 
 def check_anchor_order(m):
@@ -153,4 +153,3 @@ def kmean_anchors(path='./data/coco128.yaml', n=9, img_size=640, thr=4.0, gen=10
                 print_results(k)
 
     return print_results(k)
-

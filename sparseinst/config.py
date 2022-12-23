@@ -31,7 +31,7 @@ def add_sparse_inst_config(cfg):
     # upsample factor for output masks
     cfg.MODEL.SPARSE_INST.DECODER.SCALE_FACTOR = 2.0
     cfg.MODEL.SPARSE_INST.DECODER.OUTPUT_IAM = False
-    cfg.MODEL.SPARSE_INST.DECODER.GROUPS = 4    
+    cfg.MODEL.SPARSE_INST.DECODER.GROUPS = 4
     # decoder.inst_branch
     cfg.MODEL.SPARSE_INST.DECODER.INST = CN()
     cfg.MODEL.SPARSE_INST.DECODER.INST.DIM = 256
@@ -78,3 +78,7 @@ def add_sparse_inst_config(cfg):
     # (csp-)darknet: csp1, csp2, csp3, csp4
     cfg.MODEL.CSPNET.OUT_FEATURES = ["csp1", "csp2", "csp3", "csp4"]
 
+
+    # [Search]
+    cfg.MODEL.SEARCH = CN()
+    cfg.MODEL.SEARCH.BACKBONE_ARGS = []

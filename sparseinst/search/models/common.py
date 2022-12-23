@@ -10,11 +10,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 
-from utils.datasets import letterbox
-from utils.general import non_max_suppression, make_divisible, scale_coords, xyxy2xywh
-from utils.plots import color_list, plot_one_box
-from models.darts_cell import Search_cell, Cell, PRIMITIVES
-from models.mergenas_cell import Search_cell_merge
+from ..utils.datasets import letterbox
+from ..utils.general import non_max_suppression, make_divisible, scale_coords, xyxy2xywh
+from ..utils.plots import color_list, plot_one_box
+from ..models.darts_cell import Search_cell, Cell, PRIMITIVES
+from ..models.mergenas_cell import Search_cell_merge
 from models.utils import autopad, gumbel_softmax
 
 #from mish_cuda import MishCuda as Mish
@@ -85,7 +85,6 @@ class Conv_search(nn.Module):
           tmp = nn.Sequential(nn.Conv2d(c1, c2, kernel_size, s, autopad(kernel_size, p, dilation), dilation=dilation, groups=g, bias=False), nn.BatchNorm2d(c2))
           self.m.append(tmp)
         self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
-#        self._alphas = torch.autograd.Variable(1e-3*torch.randn(len(k)), requires_grad=True)
         self.register_buffer('alphas', torch.autograd.Variable(1e-3*torch.randn(len(kd)), requires_grad=True))
 
     def forward(self, x):

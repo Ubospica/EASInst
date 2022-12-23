@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 from wandb_utils import WandbLogger
-from utils.datasets import LoadImagesAndLabels
+from ...utils.datasets import LoadImagesAndLabels
 
 WANDB_ARTIFACT_PREFIX = 'wandb-artifact://'
 
@@ -37,4 +37,3 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     create_dataset_artifact(opt)
-

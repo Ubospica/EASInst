@@ -4,8 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from models.common import Conv, DWConv
-from utils.google_utils import attempt_download
+from ..models.common import Conv, DWConv
+from ..utils.google_utils import attempt_download
 
 
 class CrossConv(nn.Module):
@@ -149,4 +149,3 @@ def attempt_load_single(weight, map_location=None):
         elif type(m) is Conv:
             m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
     return model
-

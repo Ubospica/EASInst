@@ -11,12 +11,12 @@ import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))  # to run '$ python *.py' files in subdirectories
 logger = logging.getLogger(__name__)
 
-from models.common import *
-from models.experimental import *
-from models import darts_cell
-from utils.autoanchor import check_anchor_order
-from utils.general import make_divisible, check_file, set_logging
-from utils.torch_utils import time_synchronized, fuse_conv_and_bn, model_info, scale_img, initialize_weights, \
+from .models.common import *
+from .models.experimental import *
+from .models import darts_cell
+from .utils.autoanchor import check_anchor_order
+from .utils.general import make_divisible, check_file, set_logging
+from .utils.torch_utils import time_synchronized, fuse_conv_and_bn, model_info, scale_img, initialize_weights, \
     select_device, copy_attr
 
 try:
@@ -27,7 +27,7 @@ except ImportError:
 def parse_model(d, ch=3):  # model_dict, input_channels(3)
     # logger.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
     # anchors, nc = d['anchors'], d['nc']
-    gd, gw = 1 #d['depth_multiple'], d['width_multiple']
+    gd, gw = 1, 1 #d['depth_multiple'], d['width_multiple']
     # na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
     # no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
 
@@ -48,6 +48,11 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
         #         pass
         if isinstance(args[-1], dict): args_dict = args[-1]; args = args[:-1]
         else: args_dict = {}
+
+        id = None
+        if 'id' in args_dict:
+            id = args_dict['id']
+            del args_dict['id']
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
         # 加进来
@@ -106,10 +111,8 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
         t = str(m)[8:-2].replace('__main__.', '')  # module type
         np = sum([x.numel() for x in m_.parameters()])  # number params
         m_.i, m_.f, m_.type, m_.np = i, f, t, np  # attach index, 'from' index, type, number params
-        if 'id' in args_dict:
-            m_.id = args_dict['id']
-        else:
-            m_.id = None
+        m_.id = id
+        m_.max_out_channels = c2
 
         logger.info('%3s%18s%3s%10.0f  %-40s%-30s%-30s' % (i, f, n, np, t, args, args_dict))  # print
         # save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
@@ -123,6 +126,7 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
         elif m in [Cells_search, Cells_search_merge]:
           ch.append(c2*args[1])
         else: ch.append(c2)
+
     model = Sequential(*layers) # this is not nn.Sequential
     model.arch_parameters = arch_parameters
     model.op_arch_parameters = op_arch_parameters
