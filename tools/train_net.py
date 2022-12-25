@@ -81,7 +81,7 @@ class Trainer(DefaultTrainer):
         return DatasetEvaluators(evaluator_list)
 
     @classmethod
-    def build_optimizer(cls, cfg, model):
+    def build_optimizer(cls, cfg, model: torch.nn.Module):
         params: List[Dict[str, Any]] = []
         memo: Set[torch.nn.parameter.Parameter] = set()
         for key, value in model.named_parameters(recurse=True):
