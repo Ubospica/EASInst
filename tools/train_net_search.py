@@ -26,6 +26,8 @@ from detectron2.evaluation import (
     verify_results,
 )
 
+from sparseinst.search.genotype import genotype
+
 sys.path.append(".")
 from sparseinst import add_sparse_inst_config, COCOMaskEvaluator
 
@@ -98,8 +100,7 @@ class Trainer(DefaultTrainer):
         data_loader_train, data_loader_val = self.build_train_loader(cfg)
 
         model = create_ddp_model(model, broadcast_buffers=False)
-        # self._trainer =
-        self._trainer_train = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(
+        self._trainer = self._trainer_train = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(
             model, data_loader_train, optimizer_train
         )
 
@@ -107,8 +108,7 @@ class Trainer(DefaultTrainer):
             model, data_loader_val, optimizer_val
         )
 
-
-        self.scheduler_train = self.build_lr_scheduler(cfg, optimizer_train)
+        self.scheduler = self.scheduler_train = self.build_lr_scheduler(cfg, optimizer_train)
         self.scheduler_val = self.build_lr_scheduler(cfg, optimizer_val)
         self.checkpointer = DetectionCheckpointer(
             # Assume you want to save checkpoints together with logs/statistics
@@ -266,7 +266,7 @@ def setup(args):
     add_sparse_inst_config(cfg)
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
-    cfg.freeze()
+    # cfg.freeze()
     default_setup(cfg, args)
     # Setup logger for "sparseinst" module
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="sparseinst")
@@ -276,18 +276,22 @@ def setup(args):
 def main(args):
     cfg = setup(args)
 
-    if args.eval_only:
-        model = Trainer.build_model(cfg)
-        DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
-            cfg.MODEL.WEIGHTS, resume=args.resume)
-        res = Trainer.test(cfg, model)
-        if comm.is_main_process():
-            verify_results(cfg, res)
-        return res
+    # if args.eval_only:
+    #     model = Trainer.build_model(cfg)
+    #     DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
+    #         cfg.MODEL.WEIGHTS, resume=args.resume)
+    #     res = Trainer.test(cfg, model)
+    #     if comm.is_main_process():
+    #         verify_results(cfg, res)
+    #     return res
 
     trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
-    return trainer.train()
+    trainer.train()
+    geno, cfg = genotype(trainer.model.backbone)
+    for g in geno:
+        print(g)
+    # return trainer.train()
 
 
 if __name__ == "__main__":

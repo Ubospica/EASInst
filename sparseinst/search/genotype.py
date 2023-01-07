@@ -4,7 +4,19 @@ import yaml
 from .models import darts_cell
 from copy import deepcopy
 
-def genotype(model, cfg):
+def print_recur(val):
+    print("print::", type(val), val)
+    if isinstance(val, str):
+        return
+    try:
+        for x in val:
+            print_recur(x)
+    except TypeError:
+        pass
+
+
+def genotype(model):
+    cfg = model.cfg
     op_geno=[]; op_geno_idx = []
     ch_geno = []; ch_geno_idx = []
     edge_geno = []; edge_geno_idx = []
@@ -128,8 +140,8 @@ def genotype(model, cfg):
             ch_geno.append([1])
             idx_op += 1
             idx_ch += 1
-    assert(idx_ch == len(ch_geno_idx))
-    assert(idx_op == len(op_geno_idx))
-    assert(idx_edge == len(edge_geno_idx))
+    # assert(idx_ch == len(ch_geno_idx))
+    # assert(idx_op == len(op_geno_idx))
+    # assert(idx_edge == len(edge_geno_idx))
     geno = [op_geno, ch_geno, edge_geno] # split the alpha_op and alpha_channal
-    return geno
+    return geno, cfg

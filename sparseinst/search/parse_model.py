@@ -5,6 +5,7 @@ from copy import deepcopy
 import yaml
 
 from sparseinst.search.common import Sequential
+from sparseinst.search.genotype import print_recur
 
 sys.path.append('./')  # to run '$ python *.py' files in subdirectories
 import os
@@ -39,6 +40,7 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
     ch_arch_parameters = []
     edge_arch_parameters = []
     search_space_per_layer = [] # for each layer that need to be searched, we construct a dict to record its candidate kernel sizes, dilation ratios and channel ratios
+    d_copy = deepcopy(d)
     for i, (f, n, m, args) in enumerate(d):  # from, number, module, args
         m = eval(m) if isinstance(m, str) else m  # eval strings
         # for j, a in enumerate(args):
@@ -132,4 +134,5 @@ def parse_model(d, ch=3):  # model_dict, input_channels(3)
     model.op_arch_parameters = op_arch_parameters
     model.ch_arch_parameters = ch_arch_parameters
     model.edge_arch_parameters = edge_arch_parameters
+    model.cfg = d_copy
     return model
