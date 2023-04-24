@@ -142,10 +142,11 @@ class Conv_search_merge(nn.Module):
         else: self.bias = None
 
 #        self._alphas = torch.autograd.Variable(1e-3*torch.randn(len(k)), requires_grad=True)
-        if len(kd) > 1:
-          self.register_buffer('alphas', torch.autograd.Variable(1e-3*torch.randn(len(kd)), requires_grad=True))
-        else: self.alphas = None
-        if len(candidate_e) > 1 and inside_alphas_channel:
+        # if len(kd) > 1:
+        self.register_buffer('alphas', torch.autograd.Variable(1e-3*torch.randn(len(kd)), requires_grad=True))
+        # else: self.alphas = None
+        if inside_alphas_channel:
+        # if len(candidate_e) > 1 and inside_alphas_channel:
           self.register_buffer('alphas_channel', torch.autograd.Variable(1e-3*torch.randn(len(candidate_e)), requires_grad=True))
         else: self.alphas_channel = None
 
@@ -427,26 +428,31 @@ class Bottleneck_search(nn.Module):
 
 class Bottleneck_search_merge(nn.Module):
     # Standard bottleneck
-    def __init__(self, c1, c2, kd=[(3,1),(5,1),(3,2)], candidate_e=[1.], shortcut=True, g=1, e=0.5, gumbel_channel=False, separable=False):  # ch_in, ch_out, shortcut, groups, expansion
+    def __init__(self, c1, c2, kd=[(3,1),(5,1),(3,2)], candidate_e=[1.], shortcut=True, g=1, e=0.5, gumbel_channel=False, separable=False, downsample=False):  # ch_in, ch_out, shortcut, groups, expansion
         super(Bottleneck_search_merge, self).__init__()
         self.gumbel_channel = gumbel_channel
 
         c_ = int(c2 * e)  # hidden channels
         c_max = int(c_ * max(candidate_e))
 #        self.cv1 = Conv(c1, c_, k=1, d=1, s=1)
-        self.cv1 = Conv_search_merge(c1, c_max, kd=[(1,1)], candidate_e=candidate_e, s=1, gumbel_channel=gumbel_channel)
+        # self.cv1 = Conv_search_merge(c1, c_max, kd=[(1,1)], candidate_e=candidate_e, s=1, gumbel_channel=gumbel_channel)
+        # if separable: my_conv = SepConv_search_merge
+        # else: my_conv = Conv_search_merge
+        # self.cv2 = my_conv(c_max, c2, kd, candidate_e=[1.], s=1, g=g, gumbel_channel=gumbel_channel)
+
+        self.cv1 = Conv_search_merge(c1, c_max, kd, candidate_e=candidate_e, s=2 if downsample else 1, g=g, gumbel_channel=gumbel_channel)
         if separable: my_conv = SepConv_search_merge
         else: my_conv = Conv_search_merge
-        self.cv2 = my_conv(c_max, c2, kd, candidate_e=[1.], s=1, g=g, gumbel_channel=gumbel_channel)
+        self.cv2 = my_conv(c_max, c2, kd=[(1,1)], candidate_e=[1.], s=1, gumbel_channel=gumbel_channel)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
         if self.gumbel_channel:
           cout = x.size(1)
           out = self.cv2(self.cv1(x))
-          return x + out[:,:cout,:,:] if self.add else out
+          return (x + out[:,:cout,:,:]) if self.add else out
         else:
-          return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+          return (x + self.cv2(self.cv1(x))) if self.add else self.cv2(self.cv1(x))
 
     def get_alphas(self):
         out = self.cv1.get_alphas()
@@ -542,6 +548,72 @@ class C3_search(nn.Module):
           alphas.extend(m.get_ch_alphas())
         return alphas
 
+# class C3_search_merge(nn.Module):
+#     # CSP Bottleneck with 3 convolutions
+#     def __init__(self, c1, c2, n=1, kd=[(3,1),(5,1),(3,2)], candidate_e=[1.], shortcut=True, g=1, e=0.5, search_c2=None, gumbel_channel=False, separable=False):  # ch_in, ch_out, number, shortcut, groups, expansion
+#         super(C3_search_merge, self).__init__()
+#         if search_c2==True:
+#           self.search_c2 = candidate_e
+#         else:
+#           self.search_c2 = search_c2
+#         self.gumbel_channel = gumbel_channel
+
+#         if self.search_c2:
+#           c2 = c2 * max(self.search_c2)
+#           c_ = int(c2 * e)  # hidden channels
+#           self.cv1 = Conv_search_merge(c1, c_, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)
+#           self.cv2 = Conv_search_merge(c1, c_, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)
+#           if gumbel_channel:
+#             self.cv3 = nn.ModuleList([Conv_search_merge(c_, c2, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, act=False, with_bn=False, inside_alphas_channel=False) for _ in range(2)])  # act=FReLU(c2)
+#             self.cv3_bn = nn.ModuleList([nn.BatchNorm2d(int(c2*e)) for e in self.search_c2])
+#             self.cv3_act = nn.SiLU()
+#           else:
+#             self.cv3 = Conv_search_merge(2 * c_, c2, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)  # act=FReLU(c2)
+#           self.register_buffer('alphas_channel', torch.autograd.Variable(1e-3*torch.randn(len(self.search_c2)), requires_grad=True))
+#         else:
+#           c_ = int(c2 * e)  # hidden channels
+#           self.cv1 = Conv(c1, c_, k=1, d=1, s=1)
+#           self.cv2 = Conv(c1, c_, k=1, d=1, s=1)
+#           self.cv3 = Conv(2 * c_, c2, k=1, d=1, s=1)  # act=FReLU(c2)
+#           self.alphas_channel = None
+#         self.m = nn.Sequential(*[Bottleneck_search_merge(c_, c_, kd, candidate_e, shortcut, g, e=1.0, gumbel_channel=gumbel_channel, separable=separable) for _ in range(n)])
+#         # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
+
+#     def forward(self, x):
+#         if self.search_c2:
+#           if self.gumbel_channel:
+#             alphas_channel = gumbel_softmax(F.log_softmax(self.alphas_channel, dim=-1), hard=True) # alphas_channel is one-hot vector
+#             out = self.cv3[0].forward_withAlpha(self.m(self.cv1.forward_withAlpha(x, alphas_channel)), alphas_channel) + self.cv3[1].forward_withAlpha(self.cv2.forward_withAlpha(x, alphas_channel), alphas_channel)
+#             for idx, a in enumerate(alphas_channel):
+#               if a > 0: return self.cv3_act(self.cv3_bn[idx](out))
+#             raise(ValueError("If code runs here, then there must be something wrong!"))
+#           else:
+#             alphas_channel = nn.functional.softmax(self.alphas_channel, dim=-1)
+#             return self.cv3.forward_withAlpha(torch.cat((self.m(self.cv1.forward_withAlpha(x, alphas_channel)), self.cv2.forward_withAlpha(x, alphas_channel)), dim=1), alphas_channel)
+#         else:
+#           return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+
+#     def get_alphas(self):
+#         alphas = []
+#         for m in self.m:
+#           alphas.extend(m.get_alphas())
+#         if self.search_c2: alphas.append(self.alphas_channel)
+#         return alphas
+
+#     def get_op_alphas(self):
+#         alphas = []
+#         for m in self.m:
+#           alphas.extend(m.get_op_alphas())
+#         return alphas
+
+#     def get_ch_alphas(self):
+#         alphas = []
+#         for m in self.m:
+#           alphas.extend(m.get_ch_alphas())
+#         if self.search_c2: alphas.append(self.alphas_channel)
+#         return alphas
+
+
 class C3_search_merge(nn.Module):
     # CSP Bottleneck with 3 convolutions
     def __init__(self, c1, c2, n=1, kd=[(3,1),(5,1),(3,2)], candidate_e=[1.], shortcut=True, g=1, e=0.5, search_c2=None, gumbel_channel=False, separable=False):  # ch_in, ch_out, number, shortcut, groups, expansion
@@ -556,7 +628,71 @@ class C3_search_merge(nn.Module):
           c2 = c2 * max(self.search_c2)
           c_ = int(c2 * e)  # hidden channels
           self.cv1 = Conv_search_merge(c1, c_, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)
-          self.cv2 = Conv_search_merge(c1, c_, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)
+          if gumbel_channel:
+            self.cv3 = nn.ModuleList([Conv_search_merge(c1 if i==1 else c_, c2, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, act=False, with_bn=False, inside_alphas_channel=False) for i in range(2)])  # act=FReLU(c2)
+            self.cv3_bn = nn.ModuleList([nn.BatchNorm2d(int(c2*e)) for e in self.search_c2])
+            self.cv3_act = nn.SiLU()
+          else:
+            self.cv3 = Conv_search_merge(c1 + c_, c2, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)  # act=FReLU(c2)
+          self.register_buffer('alphas_channel', torch.autograd.Variable(1e-3*torch.randn(len(self.search_c2)), requires_grad=True))
+        else:
+          c_ = int(c2 * e)  # hidden channels
+          self.cv1 = Conv(c1, c_, k=1, d=1, s=1)
+          self.cv3 = Conv(2 * c_, c2, k=1, d=1, s=1)  # act=FReLU(c2)
+          self.alphas_channel = None
+        self.m = nn.Sequential(*[Bottleneck_search_merge(c_, c_, kd, candidate_e, shortcut, g, e=1.0, gumbel_channel=gumbel_channel, separable=separable) for _ in range(n)])
+        # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
+
+    def forward(self, x):
+        if self.search_c2:
+          if self.gumbel_channel:
+            alphas_channel = gumbel_softmax(F.log_softmax(self.alphas_channel, dim=-1), hard=True) # alphas_channel is one-hot vector
+            out = self.cv3[0].forward_withAlpha(self.m(self.cv1.forward_withAlpha(x, alphas_channel)), alphas_channel) + self.cv3[1].forward_withAlpha(x, alphas_channel)
+            for idx, a in enumerate(alphas_channel):
+              if a > 0: return self.cv3_act(self.cv3_bn[idx](out))
+            raise(ValueError("If code runs here, then there must be something wrong!"))
+          else:
+            alphas_channel = nn.functional.softmax(self.alphas_channel, dim=-1)
+            return self.cv3.forward_withAlpha(torch.cat((self.m(self.cv1.forward_withAlpha(x, alphas_channel)), x), dim=1), alphas_channel)
+        else:
+          return self.cv3(torch.cat((self.m(self.cv1(x)), x), dim=1))
+
+    def get_alphas(self):
+        alphas = []
+        for m in self.m:
+          alphas.extend(m.get_alphas())
+        if self.search_c2: alphas.append(self.alphas_channel)
+        return alphas
+
+    def get_op_alphas(self):
+        alphas = []
+        for m in self.m:
+          alphas.extend(m.get_op_alphas())
+        return alphas
+
+    def get_ch_alphas(self):
+        alphas = []
+        for m in self.m:
+          alphas.extend(m.get_ch_alphas())
+        if self.search_c2: alphas.append(self.alphas_channel)
+        return alphas
+
+
+class Down_sampling_search_merge(nn.Module):
+    # CSP Bottleneck with 3 convolutions
+    def __init__(self, c1, c2, n=1, kd=[(3,1),(5,1),(3,2)], candidate_e=[1.], shortcut=True, g=1, e=0.5, search_c2=None, gumbel_channel=False, separable=False):  # ch_in, ch_out, number, shortcut, groups, expansion
+        super(Down_sampling_search_merge, self).__init__()
+        if search_c2==True:
+          self.search_c2 = candidate_e
+        else:
+          self.search_c2 = search_c2
+        self.gumbel_channel = gumbel_channel
+
+        if self.search_c2:
+          c2 = c2 * max(self.search_c2)
+          c_ = int(c2 * e)  # hidden channels
+          self.cv1 = Conv_search_merge(c1, c_, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, inside_alphas_channel=False)
+          self.cv2 = Conv_search_merge(c1, c_, kd=[(1,1)], candidate_e=self.search_c2, s=2, gumbel_channel=gumbel_channel, inside_alphas_channel=False)
           if gumbel_channel:
             self.cv3 = nn.ModuleList([Conv_search_merge(c_, c2, kd=[(1,1)], candidate_e=self.search_c2, s=1, gumbel_channel=gumbel_channel, act=False, with_bn=False, inside_alphas_channel=False) for _ in range(2)])  # act=FReLU(c2)
             self.cv3_bn = nn.ModuleList([nn.BatchNorm2d(int(c2*e)) for e in self.search_c2])
@@ -567,10 +703,10 @@ class C3_search_merge(nn.Module):
         else:
           c_ = int(c2 * e)  # hidden channels
           self.cv1 = Conv(c1, c_, k=1, d=1, s=1)
-          self.cv2 = Conv(c1, c_, k=1, d=1, s=1)
+          self.cv2 = Conv(c1, c_, k=1, d=1, s=2)
           self.cv3 = Conv(2 * c_, c2, k=1, d=1, s=1)  # act=FReLU(c2)
           self.alphas_channel = None
-        self.m = nn.Sequential(*[Bottleneck_search_merge(c_, c_, kd, candidate_e, shortcut, g, e=1.0, gumbel_channel=gumbel_channel, separable=separable) for _ in range(n)])
+        self.m = nn.Sequential(*[Bottleneck_search_merge(c_, c_, kd, candidate_e, False, g, e=1.0, gumbel_channel=gumbel_channel, separable=separable, downsample=True) for _ in range(n)])
         # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
 
     def forward(self, x):
@@ -606,6 +742,7 @@ class C3_search_merge(nn.Module):
           alphas.extend(m.get_ch_alphas())
         if self.search_c2: alphas.append(self.alphas_channel)
         return alphas
+
 
 class Cells_search(nn.Module):
     def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev, N=1, gumbel_op=False):

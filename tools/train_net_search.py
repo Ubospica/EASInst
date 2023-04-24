@@ -26,9 +26,8 @@ from detectron2.evaluation import (
     verify_results,
 )
 
-from sparseinst.search.genotype import genotype
-
 sys.path.append(".")
+from sparseinst.search.genotype import genotype
 from sparseinst import add_sparse_inst_config, COCOMaskEvaluator
 
 

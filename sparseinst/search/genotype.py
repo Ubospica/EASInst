@@ -87,7 +87,7 @@ def genotype(model):
                 tmp[3][0] = Cout * e
             idx_op += n
             idx_ch += n
-        elif tmp[2] in ["C3_search", "C3_search_merge"]:
+        elif tmp[2] in ["C3_search", "C3_search_merge", "Down_sampling_search_merge"]:
             n = tmp[1]
             n = max(round(n * gd), 1) if n > 1 else n  # depth gain
             func_p = tmp[3]
